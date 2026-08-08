@@ -1,0 +1,50 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "rich-matplotlib"
+version = "0.1.0"
+description = "Display matplotlib figures directly in the terminal using rich and sixel graphics."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{ name = "Jonah Femiani", email = "jonah.femiani07@gmail.com" }]
+keywords = ["matplotlib", "rich", "sixel", "terminal", "plotting"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Visualization",
+]
+
+dependencies = [
+    "matplotlib>=3.0.0",
+    "pillow>=9.0.0",
+    "rich>=13.0.0",
+    "textual-image>=0.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.6.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/jfemiani10/rich-matplotlib"
+Issues = "https://github.com/jfemiani10/rich-matplotlib/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rich_matplotlib"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "RUF"]
