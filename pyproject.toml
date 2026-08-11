@@ -28,6 +28,9 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    # numpy arrives anyway as a matplotlib dependency, but the demos import it
+    # directly, so it is named here rather than relied on by accident.
+    "numpy>=1.22",
     "pytest>=8.0.0",
     "ruff>=0.6.0",
 ]
