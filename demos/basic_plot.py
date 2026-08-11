@@ -22,7 +22,7 @@ def main() -> None:
     # Inside the block, `plt` is the proxy rather than matplotlib.pyplot itself,
     # so no window is opened and no explicit show() is needed.
     with richplot() as plt:
-        plt.figure(figsize=(8, 3))
+        plt.figure(figsize=(8, 4))
         plt.plot(x, np.sin(x), label="sin(x)")
         plt.plot(x, np.cos(x), label="cos(x)")
         plt.legend(loc="upper right")
