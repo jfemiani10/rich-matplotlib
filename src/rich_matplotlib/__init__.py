@@ -8,8 +8,14 @@ The implementation lives in the private ``_core`` module; everything meant for p
 use is re-exported here, so the import path stays stable if that module is ever split.
 """
 
-from ._core import richplot, terminal_background
+from ._core import figure_image, richplot, terminal_background, terminal_style
 
 __version__ = "0.1.0"
 
-__all__ = ["__version__", "richplot", "terminal_background"]
+__all__ = [
+    "__version__",
+    "figure_image",
+    "richplot",
+    "terminal_background",
+    "terminal_style",
+]

@@ -8,7 +8,7 @@ import pytest
 from rich.console import Console
 
 from rich_matplotlib import _core
-from rich_matplotlib._core import _is_light, _terminal_style, richplot
+from rich_matplotlib._core import _is_light, richplot, terminal_style
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -43,7 +43,7 @@ def test_is_light_uses_perceived_brightness(color, expected):
 
 
 def test_terminal_style_paints_the_background_color():
-    with _terminal_style(VSCODE_DARK):
+    with terminal_style(VSCODE_DARK):
         assert mpl.rcParams["figure.facecolor"] == "#1e1e1e"
         assert mpl.rcParams["savefig.facecolor"] == "#1e1e1e"
 
@@ -51,21 +51,21 @@ def test_terminal_style_paints_the_background_color():
 def test_terminal_style_lightens_ink_on_dark_terminals():
     default_text = mpl.rcParams["text.color"]
 
-    with _terminal_style(BLACK):
+    with terminal_style(BLACK):
         assert mpl.rcParams["text.color"] != default_text
 
 
 def test_terminal_style_leaves_light_terminals_alone():
     default_text = mpl.rcParams["text.color"]
 
-    with _terminal_style(WHITE):
+    with terminal_style(WHITE):
         assert mpl.rcParams["text.color"] == default_text
 
 
 def test_terminal_style_restores_rcparams():
     before = dict(mpl.rcParams)
 
-    with _terminal_style(BLACK):
+    with terminal_style(BLACK):
         pass
 
     assert mpl.rcParams["figure.facecolor"] == before["figure.facecolor"]
@@ -75,7 +75,7 @@ def test_terminal_style_restores_rcparams():
 def test_terminal_style_restores_rcparams_after_an_exception():
     before = mpl.rcParams["figure.facecolor"]
 
-    with pytest.raises(RuntimeError), _terminal_style(BLACK):
+    with pytest.raises(RuntimeError), terminal_style(BLACK):
         raise RuntimeError("boom")
 
     assert mpl.rcParams["figure.facecolor"] == before
@@ -84,7 +84,7 @@ def test_terminal_style_restores_rcparams_after_an_exception():
 def test_terminal_style_is_a_no_op_without_a_color():
     before = dict(mpl.rcParams)
 
-    with _terminal_style(None):
+    with terminal_style(None):
         assert mpl.rcParams["figure.facecolor"] == before["figure.facecolor"]
         assert mpl.rcParams["text.color"] == before["text.color"]
 

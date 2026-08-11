@@ -25,9 +25,8 @@ from io import BytesIO
 
 import matplotlib.pyplot as plt
 from PIL import Image as PILImage
-from rich.console import Console
+from rich.console import Console, RenderableType
 from textual_image import _terminal
-from textual_image._terminal import TerminalError, capture_terminal_response
 
 try:
     import termios
@@ -79,6 +78,13 @@ def _minimum_probe_timeout(seconds: float) -> Iterator[None]:
 # The probe must therefore happen with a workable timeout, hence the patch above.
 with _minimum_probe_timeout(_MINIMUM_PROBE_TIMEOUT):
     from textual_image.renderable import Image as TerminalImage
+
+# Imported after the block above so the renderer is already chosen; the import order
+# here is deliberate rather than accidental.
+from textual_image._terminal import (  # noqa: E402
+    TerminalError,
+    capture_terminal_response,
+)
 
 #: Escape sequence that asks the terminal to report its background color (OSC 11).
 _OSC11_QUERY = "\x1b]11;?\x1b\\"
@@ -188,13 +194,21 @@ def _is_light(color: tuple[int, int, int]) -> bool:
 
 
 @contextmanager
-def _terminal_style(color: tuple[int, int, int] | None) -> Iterator[None]:
+def terminal_style(color: tuple[int, int, int] | None) -> Iterator[None]:
     """Style matplotlib to blend into a terminal of the given background color.
 
     Dark terminals additionally get matplotlib's ``dark_background`` style, which
     lightens the text, axes and default color cycle so they stay readable. The exact
     terminal color is then painted onto the figure so its edges disappear into the
     surrounding text rather than sitting in a visible box.
+
+    :func:`richplot` applies this itself. It is public for the case ``richplot`` cannot
+    cover: building figures by hand for :func:`figure_image`, where the styling has to be
+    active while the figure is *created*, not only while it is saved::
+
+        >>> with terminal_style(terminal_background()):  # doctest: +SKIP
+        ...     figure = build_figure()
+        ...     live.update(figure_image(figure))
 
     Args:
         color: The terminal background as ``(red, green, blue)``, or ``None`` when it
@@ -224,6 +238,52 @@ def _terminal_style(color: tuple[int, int, int] | None) -> Iterator[None]:
         # Entered last so these win over anything the style set.
         stack.enter_context(plt.rc_context(overrides))
         yield
+
+
+def figure_image(
+    figure,
+    width: int | str = "100%",
+    height: int | str | None = "auto",
+) -> RenderableType:
+    """Convert a matplotlib figure into a rich renderable.
+
+    :func:`richplot` prints figures for you, which is all a script needs. This is the
+    same conversion exposed on its own, for the cases where something else in rich owns
+    the output: a :class:`rich.live.Live` display redrawing a plot in place, or a figure
+    placed inside a table, panel or layout.
+
+        >>> with Live(console=console) as live:  # doctest: +SKIP
+        ...     live.update(figure_image(figure, width="80%"))
+
+    The figure is encoded as an in-memory PNG rather than written to disk, then handed to
+    textual-image for conversion into whatever the terminal supports.
+
+    Nothing here closes the figure. A loop that builds a figure per frame must call
+    ``plt.close(figure)`` itself or matplotlib will accumulate every one of them.
+
+    Args:
+        figure: The matplotlib ``Figure`` to convert.
+        width: Width of the rendered image, either a number of terminal cells, a
+            percentage of the console width such as ``"100%"``, or ``"auto"``.
+        height: Height of the rendered image, in the same units as ``width``.
+            ``"auto"`` derives it from the width so the figure keeps its shape.
+
+    Returns:
+        A rich renderable that prints the figure as a terminal image.
+    """
+    with BytesIO() as buffer:
+        figure.savefig(buffer, format="png")
+        buffer.seek(0)
+
+        with PILImage.open(buffer) as image:
+            # PIL loads lazily, so the pixels must be copied out before the underlying
+            # buffer is closed by these context managers.
+            #
+            # Both dimensions are always passed. textual-image resolves them
+            # independently, so leaving the height unset does not mean "follow the
+            # width" -- it means "keep the PNG's own pixel height", which combined with
+            # a scaled width stretches the figure.
+            return TerminalImage(image.copy(), width=width, height=height)
 
 
 class _RichPyplot:
@@ -279,27 +339,11 @@ class _RichPyplot:
     def _render(self, figure) -> None:
         """Print a single figure to the console as a terminal image.
 
-        The figure is encoded as an in-memory PNG rather than written to disk, then
-        handed to textual-image for conversion into whatever the terminal supports.
-
         Args:
             figure: The matplotlib ``Figure`` to render.
         """
-        with BytesIO() as buffer:
-            figure.savefig(buffer, format="png")
-            buffer.seek(0)
 
-            with PILImage.open(buffer) as image:
-                # PIL loads lazily, so the pixels must be copied out before the
-                # underlying buffer is closed by these context managers.
-                #
-                # Both dimensions are always passed. textual-image resolves them
-                # independently, so leaving the height unset does not mean "follow the
-                # width" -- it means "keep the PNG's own pixel height", which combined
-                # with a scaled width stretches the figure.
-                self.console.print(
-                    TerminalImage(image.copy(), width=self.width, height=self.height),
-                )
+        self.console.print(figure_image(figure, width=self.width, height=self.height))
 
     def show(self, *_args, close: bool = True, **_kwargs) -> None:
         """Render every figure created inside the context.
@@ -369,7 +413,7 @@ def richplot(
 
     # The styling has to stay active while figures are *created* and while they are
     # saved to PNG, which is why show() happens inside the block rather than after it.
-    with _terminal_style(background):
+    with terminal_style(background):
         yield proxy
 
         # Skipped when the body raises: a half-drawn figure is not worth printing.
