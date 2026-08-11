@@ -83,15 +83,35 @@ with richplot(console=console) as plt:
 
 ### Sizing
 
-`width` accepts a number of terminal cells or a percentage of the console width:
+By default figures fill the console's width, and take whatever height keeps their
+proportions intact.
+
+`width` and `height` each accept a number of terminal cells, a percentage of the
+console, or `"auto"`:
 
 ```python
-with richplot(width="60%") as plt:  # default is "100%"
+with richplot(width="60%") as plt:  # default is width="100%", height="auto"
     ...
 ```
 
+`height="auto"` derives the height from the width, which is what keeps the figure's
+aspect ratio intact — so setting `width` alone is usually all you want.
+
+The one consequence to know: a tall figure at full width can end up taller than the
+screen and scroll. `width="auto"` gives up some width to keep the whole plot visible
+at once:
+
+```python
+with richplot(width="auto") as plt:  # never taller than the console
+    ...
+```
+
+Sizing both axes explicitly resizes the figure into exactly that box with no regard for
+its shape, which is only what you want if the figure already matches it.
+
 Wide, short figures suit a terminal better than matplotlib's default shape, so
-`plt.figure(figsize=(8, 3))` is usually worth setting.
+`plt.figure(figsize=(8, 4))` is worth setting — tall enough to keep an `xlabel` from
+being clipped, and wide enough that it does not tower over the rest of your output.
 
 ### Rendering early
 
@@ -109,7 +129,7 @@ with richplot() as plt:
 
 | Object | Description |
 | --- | --- |
-| `richplot(console=None, width="100%", match_background=True)` | Context manager yielding a `pyplot` stand-in. |
+| `richplot(console=None, width="100%", height="auto", match_background=True)` | Context manager yielding a `pyplot` stand-in. |
 | `terminal_background(timeout=1.0)` | The terminal's background as `(r, g, b)` in 0-255, or `None` if it cannot be determined. |
 
 ## Demos

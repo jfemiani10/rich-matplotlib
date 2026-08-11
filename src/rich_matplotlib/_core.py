@@ -235,19 +235,28 @@ class _RichPyplot:
     already had open untouched.
     """
 
-    def __init__(self, console: Console, initial_figures: set[int], width: int | str) -> None:
+    def __init__(
+        self,
+        console: Console,
+        initial_figures: set[int],
+        width: int | str,
+        height: int | str | None = "auto",
+    ) -> None:
         """Initialize the proxy.
 
         Args:
             console: The rich console figures are printed to.
             initial_figures: Numbers of the figures that existed beforehand, which
                 this proxy must leave alone.
-            width: Width of the rendered image, either a number of terminal cells or a
-                percentage string such as ``"100%"``.
+            width: Width of the rendered image, either a number of terminal cells, a
+                percentage string such as ``"100%"``, or ``"auto"``.
+            height: Height of the rendered image, in the same units as ``width``.
+                ``"auto"`` derives it from the width so the figure keeps its shape.
         """
         self.console = console
         self.initial_figures = initial_figures
         self.width = width
+        self.height = height
 
     def __getattr__(self, name: str):
         """Forward any unknown attribute to ``matplotlib.pyplot``.
@@ -283,7 +292,14 @@ class _RichPyplot:
             with PILImage.open(buffer) as image:
                 # PIL loads lazily, so the pixels must be copied out before the
                 # underlying buffer is closed by these context managers.
-                self.console.print(TerminalImage(image.copy(), width=self.width))
+                #
+                # Both dimensions are always passed. textual-image resolves them
+                # independently, so leaving the height unset does not mean "follow the
+                # width" -- it means "keep the PNG's own pixel height", which combined
+                # with a scaled width stretches the figure.
+                self.console.print(
+                    TerminalImage(image.copy(), width=self.width, height=self.height),
+                )
 
     def show(self, *_args, close: bool = True, **_kwargs) -> None:
         """Render every figure created inside the context.
@@ -308,6 +324,7 @@ class _RichPyplot:
 def richplot(
     console: Console | None = None,
     width: int | str = "100%",
+    height: int | str | None = "auto",
     match_background: bool = True,
 ) -> Iterator[_RichPyplot]:
     """Draw matplotlib figures into the terminal instead of a GUI window.
@@ -324,8 +341,19 @@ def richplot(
         console: The rich console to print to. Pass the console a live display or
             progress bar is using, so the two do not fight over the cursor. Defaults
             to a fresh console.
-        width: Width of the rendered image, either a number of terminal cells or a
-            percentage of the console width such as ``"100%"``.
+        width: Width of the rendered image, either a number of terminal cells, a
+            percentage of the console width such as ``"100%"``, or ``"auto"``.
+            Defaults to the full console width, which lets a tall figure run past the
+            bottom of the screen; ``"auto"`` gives up width instead, so the whole plot
+            stays visible at once.
+        height: Height of the rendered image, in the same units as ``width``, where a
+            percentage is of the console height. Defaults to ``"auto"``, which derives
+            the height from the width so the figure is never distorted. ``None`` gives
+            the height the figure's own pixels work out to, independently of the
+            width, which stretches the plot unless the two happen to agree.
+
+            Sizing both explicitly resizes the figure into exactly that box without
+            regard for its aspect ratio.
         match_background: Whether to ask the terminal for its background color and
             style the figures to match it.
 
@@ -337,7 +365,7 @@ def richplot(
 
     # Recorded before the body runs, so figures the caller already had open are
     # neither rendered nor closed by this block.
-    proxy = _RichPyplot(console, set(plt.get_fignums()), width)
+    proxy = _RichPyplot(console, set(plt.get_fignums()), width, height)
 
     # The styling has to stay active while figures are *created* and while they are
     # saved to PNG, which is why show() happens inside the block rather than after it.
