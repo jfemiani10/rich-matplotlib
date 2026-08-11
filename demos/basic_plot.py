@@ -21,7 +21,8 @@ def main() -> None:
 
     # Inside the block, `plt` is the proxy rather than matplotlib.pyplot itself,
     # so no window is opened and no explicit show() is needed.
-    with richplot() as plt:
+    print("This text should be above the image.")
+    with richplot(width="50%") as plt:
         plt.figure(figsize=(8, 4))
         plt.plot(x, np.sin(x), label="sin(x)")
         plt.plot(x, np.cos(x), label="cos(x)")
@@ -29,6 +30,8 @@ def main() -> None:
         plt.title("Hello from the terminal")
         plt.xlabel("x")
         plt.grid(alpha=0.3)
+
+    print("This should be below the image.")
 
 
 if __name__ == "__main__":

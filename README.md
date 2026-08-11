@@ -22,6 +22,14 @@ with richplot() as plt:
 Inside the block, `plt` behaves like `matplotlib.pyplot`. Any figure still open when the
 block ends is rendered automatically, so there is nothing new to remember.
 
+Because the figure is printed *through* a rich `Console` rather than written straight to
+stdout, it composes with the rest of a rich terminal UI: a progress bar can stay pinned
+at the bottom of the screen while plots scroll past above it, and a `Live` display can
+animate a figure in place. See [Related projects](#related-projects) for how that differs
+from the backend-based approach.
+
+![alt text](doc/demos_basic_plot.png)
+
 ## Install
 
 Not on PyPI yet, so install from the repository:
@@ -32,7 +40,9 @@ pip install git+https://github.com/jfemiani10/rich-matplotlib.git
 
 Requires Python 3.10 or newer.
 
-## Terminal support
+## Terminal setup
+
+Read this part before deciding the library is broken.
 
 The renderer is chosen once, when the package is imported, by asking your terminal what
 it can do. Everything degrades rather than failing:
@@ -41,10 +51,97 @@ it can do. Everything degrades rather than failing:
 | --- | --- |
 | foot, WezTerm, Konsole, mlterm, Windows Terminal, xterm with sixel | Sixel image |
 | Kitty, Ghostty | Kitty graphics protocol |
+| VS Code's integrated terminal | Sixel image, *once images are enabled* — see below |
 | Anything else with 24-bit color | Colored half-blocks |
 | Piped to a file, CI, no color | Plain unicode blocks |
 
-VS Code's integrated terminal has no graphics protocol, so expect blocks there.
+### VS Code
+
+VS Code's integrated terminal can show images, but not until you turn it on. Search the
+settings for `enableImages` and tick **Terminal › Integrated: Enable Images**:
+
+![alt text](doc/settings_enable_images.png)
+
+Two conditions come with it:
+
+- **Terminal › Integrated: Gpu Acceleration** must be enabled — images do not work in the
+  DOM renderer.
+- On **Windows**, image protocols need ConPTY v2 or newer, which means enabling
+  **Terminal › Integrated: Windows Use Conpty Dll**.
+
+Without this, plots still appear — as colored half-blocks — so a blocky figure in VS Code
+usually means the setting rather than a bug.
+
+### If the figure looks garbled or overlaps your text
+
+Rendering goes through [textual-image](https://github.com/lnqs/textual-image), which
+places an image by reserving the terminal rows it needs. If the image is taller than the
+terminal itself there are not enough rows to reserve, and it smears into the surrounding
+text.
+
+The fix is one of:
+
+- make the terminal window taller,
+- reduce the figure height (`richplot(height=20)`, or a shorter `figsize`),
+- or use `width="auto"`, which caps the height at the console height for you.
+
+See [Sizing](#sizing) for the details.
+
+## Related projects
+
+The usual way to get matplotlib into a terminal is a **backend**:
+[matplotlib-backend-sixel](https://github.com/koppa/matplotlib-backend-sixel) and
+[itermplot](https://github.com/daleroberts/itermplot) both work this way. You select the
+backend once, and from then on every `plt.show()` writes an image to stdout:
+
+```python
+import matplotlib
+
+matplotlib.use("module://matplotlib-backend-sixel")
+
+import matplotlib.pyplot as plt
+
+plt.plot([1, 2, 3])
+plt.show()  # goes to the terminal
+```
+
+That is a genuinely nice property: existing scripts need no changes at all. The trade-off
+is that it is a global, all-or-nothing switch, and the image is written directly to
+stdout, behind the back of anything else drawing on the screen.
+
+`rich_matplotlib` is scoped instead of global, and it prints through a rich `Console`:
+
+| | Backend (`matplotlib-backend-sixel`, `itermplot`) | `rich_matplotlib` |
+| --- | --- | --- |
+| How you opt in | Global — `matplotlib.use(...)` for the whole process | Per block — `with richplot() as plt:` |
+| Output path | Escape codes written straight to stdout | Printed through a rich `Console` |
+| Alongside a rich progress bar or `Live` panel | Fights it for the cursor; output gets overwritten | Rich sequences the two; the bar stays put |
+| Non-terminal output (pipe, CI) | Sixel codes into your logs | Degrades to unicode blocks |
+| Rest of the program | Also redirected | Untouched — GUI or `savefig` still work |
+
+The last row is the practical one. Because `richplot` only touches figures created inside
+its block, a script can render a quick check to the terminal and still write its real
+output to a file, with no backend juggling.
+
+**The composition point is worth spelling out.** A rich `Progress` bar or `Live` display
+owns the bottom of the screen and redraws it continuously. Anything that writes to stdout
+without telling rich gets overwritten or shredded — which is what happens when a sixel
+backend and a progress bar share a terminal. Handing `richplot` the *same* console lets
+rich order the writes, so plots scroll up above a progress bar that never moves:
+
+```python
+with Progress(console=console) as progress:
+    for chunk in chunks:
+        ...
+        with richplot(console=console) as plt:  # prints above the bar
+            plt.plot(chunk)
+        progress.advance(task)
+```
+
+Two neighbours worth knowing about, which do not involve matplotlib at all:
+[plotext](https://github.com/piccolomo/plotext) draws plots out of unicode characters
+with its own API, and [textual-image](https://github.com/lnqs/textual-image) is the image
+protocol layer this library renders through.
 
 ## Usage
 
@@ -81,6 +178,29 @@ with richplot(console=console) as plt:
     plt.plot(results)
 ```
 
+For an animation, `figure_image()` gives you the figure as a rich renderable instead of
+printing it, which is what `Live` needs to redraw a plot in place:
+
+```python
+from rich.live import Live
+from rich_matplotlib import figure_image, terminal_background, terminal_style
+
+# richplot styles figures for you; a hand-built figure has to opt in, and the styling
+# must be active while the figure is *created*.
+with terminal_style(terminal_background()):
+    figure, line = build_figure()
+
+    with Live(console=console, auto_refresh=False) as live:
+        for phase in phases:
+            line.set_ydata(np.sin(x + phase))
+            live.update(figure_image(figure, width="70%"), refresh=True)
+```
+
+Reuse one figure and replace its data, rather than building a figure per frame: it is
+faster, and it stops matplotlib rescaling the axes so the image twitches between frames.
+`figure_image` never closes anything, so closing is yours to do. See
+[`demos/live_plot.py`](demos/live_plot.py).
+
 ### Sizing
 
 By default figures fill the console's width, and take whatever height keeps their
@@ -113,6 +233,26 @@ Wide, short figures suit a terminal better than matplotlib's default shape, so
 `plt.figure(figsize=(8, 4))` is worth setting — tall enough to keep an `xlabel` from
 being clipped, and wide enough that it does not tower over the rest of your output.
 
+### Centering, and other print options
+
+A figure narrower than the console sits against the left margin by default. `justify`
+moves it:
+
+```python
+with richplot(width="70%", justify="center") as plt:
+    ...
+```
+
+`justify` is not special-cased — any keyword `richplot` does not recognize is handed
+straight to `console.print`, so `justify="right"`, `style=...` and the rest of rich's
+print options work the same way. They apply to every figure the block renders.
+
+Centering only shows up when there is space to center *in*. At the default
+`width="100%"` the image already fills the console, so `justify` has nothing to do.
+
+Building the renderable yourself with `figure_image()` skips this, since nothing is
+being printed — pass `justify` to your own `console.print` instead.
+
 ### Rendering early
 
 `show()` renders and closes every figure created so far, exactly like `plt.show()`.
@@ -129,8 +269,10 @@ with richplot() as plt:
 
 | Object | Description |
 | --- | --- |
-| `richplot(console=None, width="100%", height="auto", match_background=True)` | Context manager yielding a `pyplot` stand-in. |
+| `richplot(console=None, width="100%", height="auto", match_background=True, **print_options)` | Context manager yielding a `pyplot` stand-in. Extra keywords (`justify="center"`, …) go to `console.print`. |
+| `figure_image(figure, width="100%", height="auto")` | One figure as a rich renderable, for `Live` or any other rich layout. Does not print or close it. |
 | `terminal_background(timeout=1.0)` | The terminal's background as `(r, g, b)` in 0-255, or `None` if it cannot be determined. |
+| `terminal_style(color)` | Context manager styling matplotlib to blend into that background. Applied by `richplot`; needed by hand only alongside `figure_image`. |
 
 ## Demos
 
@@ -139,7 +281,8 @@ Runnable examples in [`demos/`](demos/):
 ```bash
 python demos/basic_plot.py           # one figure, the smallest possible example
 python demos/multiple_figures.py     # render order, and rendering mid-block
-python demos/rich_composition.py     # a progress bar, a table and a plot on one console
+python demos/rich_composition.py     # plots scrolling above a pinned progress bar
+python demos/live_plot.py            # a sine wave animated in place with rich Live
 python demos/background_matching.py  # the same figure with and without blending
 ```
 
