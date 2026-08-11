@@ -32,8 +32,10 @@ repos:
     hooks:
       - id: pytest
         name: pytest
-        entry: pytest -q
-        language: system
+        # Not a bare `pytest`: GUI git clients spawn git without the venv on PATH,
+        # so the executable has to be located rather than assumed. See the script.
+        entry: scripts/run-tests.sh -q
+        language: script
         # The suite covers the whole project, so run it once rather than once
         # per changed file, and run it even when no Python file changed.
         pass_filenames: false
