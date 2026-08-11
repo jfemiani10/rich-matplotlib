@@ -69,7 +69,7 @@ def run_stage(name: str, progress: Progress, rng: np.random.Generator) -> np.nda
     Returns:
         The samples this stage produced.
     """
-    task = progress.add_task(f"{name}...", total=STEPS_PER_STAGE)
+    task = progress.add_task(f"{name}...", total=STEPS_PER_STAGE, visible=False)
     samples = signal(name, STEPS_PER_STAGE, rng)
 
     for _ in range(STEPS_PER_STAGE):
@@ -128,16 +128,20 @@ def main() -> None:
         TimeElapsedColumn(),
     )
 
-    with Progress(*columns, console=console) as progress:
-        for name in ("ramp", "wave", "decay", "step"):
+    with Progress(*columns, console=console, transient=True) as progress:
+        for name in progress.track(
+            ("ramp", "wave", "decay", "step"), description="demonstrating progress bar"
+        ):
+            console.rule(f"[bold]stage: {name}[/]")
             results[name] = run_stage(name, progress, rng)
 
     # Outside the Progress block now: the bar is gone and this is an ordinary print.
-    console.print(summarize(results))
+    console.rule("[bold]Summary[/]")
+    console.print(summarize(results), justify="center")
 
     # One last figure comparing every stage, to show that several plots in a single
     # block are rendered in the order they were created.
-    with richplot(console=console, width="70%") as plt:
+    with richplot(console=console, width="70%", justify="center") as plt:
         plt.figure(figsize=(8, 4))
         for name, samples in results.items():
             plt.plot(samples, linewidth=1, label=name)

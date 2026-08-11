@@ -301,6 +301,7 @@ class _RichPyplot:
         initial_figures: set[int],
         width: int | str,
         height: int | str | None = "auto",
+        **printargs,
     ) -> None:
         """Initialize the proxy.
 
@@ -317,6 +318,7 @@ class _RichPyplot:
         self.initial_figures = initial_figures
         self.width = width
         self.height = height
+        self.printargs = printargs
 
     def __getattr__(self, name: str):
         """Forward any unknown attribute to ``matplotlib.pyplot``.
@@ -343,7 +345,7 @@ class _RichPyplot:
             figure: The matplotlib ``Figure`` to render.
         """
 
-        self.console.print(figure_image(figure, width=self.width, height=self.height))
+        self.console.print(figure_image(figure, width=self.width, height=self.height), **self.printargs)
 
     def show(self, *_args, close: bool = True, **_kwargs) -> None:
         """Render every figure created inside the context.
@@ -370,6 +372,7 @@ def richplot(
     width: int | str = "100%",
     height: int | str | None = "auto",
     match_background: bool = True,
+    **printargs,
 ) -> Iterator[_RichPyplot]:
     """Draw matplotlib figures into the terminal instead of a GUI window.
 
@@ -409,7 +412,7 @@ def richplot(
 
     # Recorded before the body runs, so figures the caller already had open are
     # neither rendered nor closed by this block.
-    proxy = _RichPyplot(console, set(plt.get_fignums()), width, height)
+    proxy = _RichPyplot(console, set(plt.get_fignums()), width, height, **printargs)
 
     # The styling has to stay active while figures are *created* and while they are
     # saved to PNG, which is why show() happens inside the block rather than after it.

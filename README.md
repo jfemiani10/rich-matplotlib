@@ -233,6 +233,26 @@ Wide, short figures suit a terminal better than matplotlib's default shape, so
 `plt.figure(figsize=(8, 4))` is worth setting — tall enough to keep an `xlabel` from
 being clipped, and wide enough that it does not tower over the rest of your output.
 
+### Centering, and other print options
+
+A figure narrower than the console sits against the left margin by default. `justify`
+moves it:
+
+```python
+with richplot(width="70%", justify="center") as plt:
+    ...
+```
+
+`justify` is not special-cased — any keyword `richplot` does not recognize is handed
+straight to `console.print`, so `justify="right"`, `style=...` and the rest of rich's
+print options work the same way. They apply to every figure the block renders.
+
+Centering only shows up when there is space to center *in*. At the default
+`width="100%"` the image already fills the console, so `justify` has nothing to do.
+
+Building the renderable yourself with `figure_image()` skips this, since nothing is
+being printed — pass `justify` to your own `console.print` instead.
+
 ### Rendering early
 
 `show()` renders and closes every figure created so far, exactly like `plt.show()`.
@@ -249,7 +269,7 @@ with richplot() as plt:
 
 | Object | Description |
 | --- | --- |
-| `richplot(console=None, width="100%", height="auto", match_background=True)` | Context manager yielding a `pyplot` stand-in. |
+| `richplot(console=None, width="100%", height="auto", match_background=True, **print_options)` | Context manager yielding a `pyplot` stand-in. Extra keywords (`justify="center"`, …) go to `console.print`. |
 | `figure_image(figure, width="100%", height="auto")` | One figure as a rich renderable, for `Live` or any other rich layout. Does not print or close it. |
 | `terminal_background(timeout=1.0)` | The terminal's background as `(r, g, b)` in 0-255, or `None` if it cannot be determined. |
 | `terminal_style(color)` | Context manager styling matplotlib to blend into that background. Applied by `richplot`; needed by hand only alongside `figure_image`. |
