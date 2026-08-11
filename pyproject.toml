@@ -31,8 +31,11 @@ dev = [
     # numpy arrives anyway as a matplotlib dependency, but the demos import it
     # directly, so it is named here rather than relied on by accident.
     "numpy>=1.22",
+    "pre-commit>=3.5.0",
     "pytest>=8.0.0",
-    "ruff>=0.6.0",
+    # Pinned to a minor series: ruff's formatter and lint rules change between
+    # releases, and CI disagreeing with your local run is a miserable afternoon.
+    "ruff>=0.16.0,<0.17",
 ]
 
 [project.urls]

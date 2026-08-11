@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A second push to the same branch cancels the run still in flight, so pushing
+# three fixes in a row costs one CI run instead of three.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# The default token can write to the repo; nothing here needs to.
+permissions:
+  contents: read
+
+env:
+  # No display on a runner, so matplotlib must never reach for a GUI backend.
+  MPLBACKEND: Agg
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Ruff lint
+        run: ruff check --output-format=github .
+
+      - name: Ruff format
+        run: ruff format --check .
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      # Run every version even after one fails, so a 3.10-only break is visible
+      # in the same run rather than one version at a time.
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      # Editable install of the package plus its dev extra: this is also what
+      # proves the dependency list in pyproject.toml is actually complete.
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Pytest
+        run: pytest -v
+
+      # The runner has no terminal, so this exercises every "no tty" fallback
+      # path at once. It must print blocks instead of raising.
+      - name: Smoke-test the demos
+        run: python demos/basic_plot.py > /dev/null
