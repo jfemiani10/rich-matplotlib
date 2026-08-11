@@ -24,9 +24,14 @@ repos:
     # can disagree about the same file.
     rev: v0.16.2
     hooks:
+      # `ruff format .` also formats python code blocks inside markdown, but these
+      # hooks only look at python files by default -- so without `markdown` here the
+      # hook passes locally and CI then fails on the README. They must agree.
       - id: ruff-check
         args: [--fix]
+        types_or: [python, pyi, jupyter, markdown]
       - id: ruff-format
+        types_or: [python, pyi, jupyter, markdown]
 
   - repo: local
     hooks:

@@ -101,7 +101,7 @@ Pass `close=False` to keep the figures open and add to them later:
 ```python
 with richplot() as plt:
     plt.plot(first_batch)
-    plt.show(close=False)   # rendered now, figure stays open
+    plt.show(close=False)  # rendered now, figure stays open
     plt.plot(second_batch)  # same figure, rendered again on exit
 ```
 
