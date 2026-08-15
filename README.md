@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/jfemiani10/rich-matplotlib/actions/workflows/ci.yml/badge.svg)](https://github.com/jfemiani10/rich-matplotlib/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![License](https://img.shields.io/badge/license-MIT-green)](https://github.com/jfemiani10/rich-matplotlib/blob/main/LICENSE)
 
 Display matplotlib figures directly in your terminal, as real images, using
 [rich](https://github.com/Textualize/rich) and sixel graphics.
@@ -28,17 +28,19 @@ at the bottom of the screen while plots scroll past above it, and a `Live` displ
 animate a figure in place. See [Related projects](#related-projects) for how that differs
 from the backend-based approach.
 
-![alt text](doc/demos_basic_plot.png)
+![Two sine waves plotted as a sixel image inside a terminal, with ordinary text above and below it](https://raw.githubusercontent.com/jfemiani10/rich-matplotlib/main/doc/demos_basic_plot.png)
 
 ## Install
 
-Not on PyPI yet, so install from the repository:
+```bash
+pip install rich-matplotlib
+```
+
+Requires Python 3.10 or newer. For the unreleased version:
 
 ```bash
 pip install git+https://github.com/jfemiani10/rich-matplotlib.git
 ```
-
-Requires Python 3.10 or newer.
 
 ## Terminal setup
 
@@ -60,7 +62,7 @@ it can do. Everything degrades rather than failing:
 VS Code's integrated terminal can show images, but not until you turn it on. Search the
 settings for `enableImages` and tick **Terminal › Integrated: Enable Images**:
 
-![alt text](doc/settings_enable_images.png)
+![The VS Code settings editor filtered to "enableImages", showing the Terminal > Integrated: Enable Images checkbox ticked](https://raw.githubusercontent.com/jfemiani10/rich-matplotlib/main/doc/settings_enable_images.png)
 
 Two conditions come with it:
 
@@ -199,7 +201,7 @@ with terminal_style(terminal_background()):
 Reuse one figure and replace its data, rather than building a figure per frame: it is
 faster, and it stops matplotlib rescaling the axes so the image twitches between frames.
 `figure_image` never closes anything, so closing is yours to do. See
-[`demos/live_plot.py`](demos/live_plot.py).
+[`demos/live_plot.py`](https://github.com/jfemiani10/rich-matplotlib/blob/main/demos/live_plot.py).
 
 ### Sizing
 
@@ -276,7 +278,9 @@ with richplot() as plt:
 
 ## Demos
 
-Runnable examples in [`demos/`](demos/):
+Runnable examples in
+[`demos/`](https://github.com/jfemiani10/rich-matplotlib/tree/main/demos), which ship in
+the sdist but not the wheel — clone the repo to run them:
 
 ```bash
 python demos/basic_plot.py           # one figure, the smallest possible example
