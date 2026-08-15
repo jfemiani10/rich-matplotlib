@@ -28,7 +28,9 @@ at the bottom of the screen while plots scroll past above it, and a `Live` displ
 animate a figure in place. See [Related projects](#related-projects) for how that differs
 from the backend-based approach.
 
+
 ![Two sine waves plotted as a sixel image inside a terminal, with ordinary text above and below it](https://raw.githubusercontent.com/jfemiani10/rich-matplotlib/main/doc/demos_basic_plot.png)
+
 
 ## Install
 
