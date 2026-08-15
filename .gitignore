@@ -11,6 +11,10 @@ build/
 dist/
 *.egg-info/
 
+# Credentials. .pypirc belongs in ~, not here -- this is a guard against a copy
+# landing in the repo and a PyPI token being committed.
+.pypirc
+
 # Test & tooling caches
 .pytest_cache/
 .ruff_cache/

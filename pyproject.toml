@@ -4,26 +4,45 @@ build-backend = "hatchling.build"
 
 [project]
 name = "rich-matplotlib"
-version = "0.1.0"
+# Single-sourced from the package, so __version__ and the published version cannot
+# drift apart. Bump it in src/rich_matplotlib/__init__.py.
+dynamic = ["version"]
 description = "Display matplotlib figures directly in the terminal using rich and sixel graphics."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Jonah Femiani", email = "jonah.femiani07@gmail.com" }]
-keywords = ["matplotlib", "rich", "sixel", "terminal", "plotting"]
+keywords = ["matplotlib", "rich", "sixel", "kitty", "terminal", "plotting", "tui"]
+# No "License ::" classifier: it is deprecated now that `license` carries an SPDX
+# expression, and PyPI rejects uploads that specify the license both ways.
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
     "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Visualization",
+    "Topic :: Terminals",
+    "Typing :: Typed",
 ]
 
 dependencies = [
-    "matplotlib>=3.0.0",
+    # 3.6 is the first release that supports Python 3.10, which is this floor anyway.
+    # The old >=3.0 floor was not installable here and so meant nothing.
+    "matplotlib>=3.6",
     "pillow>=9.0.0",
     "rich>=13.0.0",
-    "textual-image>=0.1.0",
+    # Capped deliberately: _core reaches into textual_image._terminal, a private module,
+    # and monkeypatches capture_terminal_response. That API has been stable since 0.5.0,
+    # but a private API carries no compatibility promise, so a major release must not be
+    # picked up unattended.
+    "textual-image>=0.5,<1.0",
 ]
 
 [project.optional-dependencies]
@@ -40,10 +59,19 @@ dev = [
 
 [project.urls]
 Homepage = "https://github.com/jfemiani10/rich-matplotlib"
+Source = "https://github.com/jfemiani10/rich-matplotlib"
 Issues = "https://github.com/jfemiani10/rich-matplotlib/issues"
+
+[tool.hatch.version]
+path = "src/rich_matplotlib/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/rich_matplotlib"]
+
+[tool.hatch.build.targets.sdist]
+# Everything needed to reproduce a build and run the tests, and nothing else. Without
+# this the sdist also carries .gitignore, .pre-commit-config.yaml and .github/.
+include = ["src", "tests", "demos", "doc", "README.md", "LICENSE", "pyproject.toml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
